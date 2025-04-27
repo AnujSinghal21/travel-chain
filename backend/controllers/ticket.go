@@ -1,9 +1,10 @@
 package controllers
 
 import (
-	"net/http"
-	"github.com/gin-gonic/gin"
 	"backend/models"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 // GetTicketByTID fetches a ticket by TID
@@ -25,10 +26,10 @@ func GetTicketByTID(c *gin.Context) {
 // GetAllTickets returns all tickets
 func GetAllTickets(c *gin.Context) {
 	c.JSON(http.StatusOK, []models.Ticket{
-		{TID: 1, ServiceID: "S001", SeatNo: 1, ServiceName: "CityLink Express", ServiceProviderID: "P001", Status: "Available", PassengerID: "", Price: 100, Source: "CityA", Destination: "CityB", TransportType: "Bus"},
-		{TID: 2, ServiceID: "S002", SeatNo: 2, ServiceName: "CityLink Express", ServiceProviderID: "P001", Status: "Booked", PassengerID: "U002", Price: 100, Source: "CityA", Destination: "CityB", TransportType: "Bus"},
-		{TID: 3, ServiceID: "S003", SeatNo: 1, ServiceName: "MetroConnect", ServiceProviderID: "P002", Status: "Available", PassengerID: "", Price: 150, Source: "CityB", Destination: "CityC", TransportType: "Train"},
-		{TID: 4, ServiceID: "S004", SeatNo: 2, ServiceName: "MetroConnect", ServiceProviderID: "P002", Status: "Available", PassengerID: "", Price: 150, Source: "CityB", Destination: "CityC", TransportType: "Train"},
+		{TID: 1, ServiceID: "S001", SeatNo: 1, ServiceName: "CityLink Express", ServiceProviderID: "goutamd21@iitk.ac.in", Status: "Available", PassengerID: "", Price: 100, Source: "CityA", Destination: "CityB", TransportType: "Bus", Duration: 100, StartTime: "2023-10-01T10:00:00Z"},
+		{TID: 2, ServiceID: "S001", SeatNo: 2, ServiceName: "CityLink Express", ServiceProviderID: "goutamd21@iitk.ac.in", Status: "Booked", PassengerID: "anuj21@iitk.ac.in", Price: 100, Source: "CityA", Destination: "CityB", TransportType: "Bus"},
+		{TID: 3, ServiceID: "S002", SeatNo: 1, ServiceName: "MetroConnect", ServiceProviderID: "P002", Status: "Available", PassengerID: "", Price: 150, Source: "CityB", Destination: "CityC", TransportType: "Train"},
+		{TID: 4, ServiceID: "S002", SeatNo: 2, ServiceName: "MetroConnect", ServiceProviderID: "P002", Status: "Available", PassengerID: "", Price: 150, Source: "CityB", Destination: "CityC", TransportType: "Train"},
 		{TID: 5, ServiceID: "S005", SeatNo: 1, ServiceName: "SkyFly", ServiceProviderID: "P003", Status: "Available", PassengerID: "", Price: 500, Source: "CityC", Destination: "CityD", TransportType: "Flight"},
 		{TID: 6, ServiceID: "S006", SeatNo: 2, ServiceName: "SkyFly", ServiceProviderID: "P003", Status: "Available", PassengerID: "", Price: 500, Source: "CityC", Destination: "CityD", TransportType: "Flight"},
 		{TID: 7, ServiceID: "S007", SeatNo: 1, ServiceName: "RoadRunner", ServiceProviderID: "P004", Status: "Available", PassengerID: "", Price: 80, Source: "CityD", Destination: "CityE", TransportType: "Bus"},
@@ -43,12 +44,12 @@ func GetAllTickets(c *gin.Context) {
 	})
 }
 
-
 // CreateTickets creates tickets
 func CreateTickets(c *gin.Context) {
 	var tickets []models.Ticket
 	if err := c.ShouldBindJSON(&tickets); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ticket list"})
+		c.Error(err) // Print debug message to show the error in binding
 		return
 	}
 

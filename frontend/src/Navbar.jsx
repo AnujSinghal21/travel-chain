@@ -24,7 +24,7 @@ function Navbar({user}) {
             onClick={() => {
               localStorage.removeItem("token");
               localStorage.removeItem("user");
-              window.location.reload();
+              window.location.href = "/";
             }}
           >
               <i className="bi bi-box-arrow-right"></i> Logout

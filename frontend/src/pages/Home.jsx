@@ -11,11 +11,11 @@ function Home() {
             By using blockchain, we ensure that all transactions are recorded on a public ledger, providing transparency and security for both users and service providers.
             Join us in revolutionizing the ticket booking industry with Travel-Chain.
         </p>
-        <h2 className="text-success">Features</h2>
+        <h2 className="text-success">Key Features</h2>
         <ul className="lead">
             <li>Decentralized booking system</li>
             <li>Secure and transparent transactions</li>
-            <li>Smart contracts for automated booking</li>
+            <li>Simulated payments and refunds</li>
             <li>User-friendly interface</li>
         </ul>
         <h2 className="text-success">Acknowledgements</h2>
