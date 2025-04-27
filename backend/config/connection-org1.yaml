@@ -1,0 +1,26 @@
+name: "Ticket Network"
+version: "1.0"
+
+channels:
+  mychannel:
+    orderers:
+      - orderer.example.com
+
+organizations:
+  Org1:
+    mspid: Org1MSP
+    cryptoPath: ../../Hyperledger/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+    peers:
+      - peer0.org1.example.com
+
+orderers:
+  orderer.example.com:
+    url: localhost:7050
+    tlsCACerts:
+      path: ../../Hyperledger/fabric-samples/test-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+peers:
+  peer0.org1.example.com:
+    url: localhost:7051
+    tlsCACerts:
+      path: ../../Hyperledger/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt

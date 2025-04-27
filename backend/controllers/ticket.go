@@ -1,11 +1,65 @@
 package controllers
 
 import (
-	"backend/models"
 	"net/http"
-
+	"fmt"
+	"time"
+	"backend/models"
 	"github.com/gin-gonic/gin"
+	"github.com/hyperledger/fabric-sdk-go/pkg/client/channel"
+	"github.com/hyperledger/fabric-sdk-go/pkg/core/config"
+	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
 )
+
+func invokeChaincode(function string, args []string) (string, error) {
+	sdk, err := fabsdk.New(config.FromFile("connection-org1.yaml"))
+	if err != nil {
+		return "", err
+	}
+	defer sdk.Close()
+
+	clientContext := sdk.ChannelContext("mychannel", fabsdk.WithUser("Admin"), fabsdk.WithOrg("Org1"))
+	client, err := channel.New(clientContext)
+	if err != nil {
+		return "", err
+	}
+
+	request := channel.Request{
+		ChaincodeID: "mycc",
+		Fcn:         function,
+		Args:        args,
+	}
+	response, err := client.Execute(request)
+	if err != nil {
+		return "", err
+	}
+	return string(response.Payload), nil
+}
+
+func queryChaincode(function string, args []string) (string, error) {
+	sdk, err := fabsdk.New(config.FromFile("connection-org1.yaml"))
+	if err != nil {
+		return "", err
+	}
+	defer sdk.Close()
+
+	clientContext := sdk.ChannelContext("mychannel", fabsdk.WithUser("Admin"), fabsdk.WithOrg("Org1"))
+	client, err := channel.New(clientContext)
+	if err != nil {
+		return "", err
+	}
+
+	request := channel.Request{
+		ChaincodeID: "mycc",
+		Fcn:         function,
+		Args:        args,
+	}
+	response, err := client.Query(request)
+	if err != nil {
+		return "", err
+	}
+	return string(response.Payload), nil
+}
 
 // GetTicketByTID fetches a ticket by TID
 func GetTicketByTID(c *gin.Context) {
@@ -15,33 +69,24 @@ func GetTicketByTID(c *gin.Context) {
 		return
 	}
 
-	// Dummy ticket response
-	c.JSON(http.StatusOK, gin.H{
-		"tid":          tid,
-		"service_name": "Mock Transport",
-		"status":       "Available",
-	})
+	result, err := queryChaincode("getTicketByID", []string{tid})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get ticket", "details": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 // GetAllTickets returns all tickets
 func GetAllTickets(c *gin.Context) {
-	c.JSON(http.StatusOK, []models.Ticket{
-		{TID: 1, ServiceID: "S001", SeatNo: 1, ServiceName: "CityLink Express", ServiceProviderID: "goutamd21@iitk.ac.in", Status: "Available", PassengerID: "", Price: 100, Source: "CityA", Destination: "CityB", TransportType: "Bus", Duration: 100, StartTime: "2023-10-01T10:00:00Z"},
-		{TID: 2, ServiceID: "S001", SeatNo: 2, ServiceName: "CityLink Express", ServiceProviderID: "goutamd21@iitk.ac.in", Status: "Booked", PassengerID: "anuj21@iitk.ac.in", Price: 100, Source: "CityA", Destination: "CityB", TransportType: "Bus"},
-		{TID: 3, ServiceID: "S002", SeatNo: 1, ServiceName: "MetroConnect", ServiceProviderID: "P002", Status: "Available", PassengerID: "", Price: 150, Source: "CityB", Destination: "CityC", TransportType: "Train"},
-		{TID: 4, ServiceID: "S002", SeatNo: 2, ServiceName: "MetroConnect", ServiceProviderID: "P002", Status: "Available", PassengerID: "", Price: 150, Source: "CityB", Destination: "CityC", TransportType: "Train"},
-		{TID: 5, ServiceID: "S005", SeatNo: 1, ServiceName: "SkyFly", ServiceProviderID: "P003", Status: "Available", PassengerID: "", Price: 500, Source: "CityC", Destination: "CityD", TransportType: "Flight"},
-		{TID: 6, ServiceID: "S006", SeatNo: 2, ServiceName: "SkyFly", ServiceProviderID: "P003", Status: "Available", PassengerID: "", Price: 500, Source: "CityC", Destination: "CityD", TransportType: "Flight"},
-		{TID: 7, ServiceID: "S007", SeatNo: 1, ServiceName: "RoadRunner", ServiceProviderID: "P004", Status: "Available", PassengerID: "", Price: 80, Source: "CityD", Destination: "CityE", TransportType: "Bus"},
-		{TID: 8, ServiceID: "S008", SeatNo: 1, ServiceName: "RoadRunner", ServiceProviderID: "P004", Status: "Booked", PassengerID: "U003", Price: 80, Source: "CityD", Destination: "CityE", TransportType: "Bus"},
-		{TID: 9, ServiceID: "S009", SeatNo: 1, ServiceName: "UrbanRide", ServiceProviderID: "P005", Status: "Available", PassengerID: "", Price: 50, Source: "CityE", Destination: "CityF", TransportType: "Bus"},
-		{TID: 10, ServiceID: "S010", SeatNo: 2, ServiceName: "UrbanRide", ServiceProviderID: "P005", Status: "Available", PassengerID: "", Price: 50, Source: "CityE", Destination: "CityF", TransportType: "Bus"},
-		{TID: 11, ServiceID: "S011", SeatNo: 1, ServiceName: "ExpressRail", ServiceProviderID: "P006", Status: "Available", PassengerID: "", Price: 200, Source: "CityF", Destination: "CityG", TransportType: "Train"},
-		{TID: 12, ServiceID: "S012", SeatNo: 2, ServiceName: "ExpressRail", ServiceProviderID: "P006", Status: "Available", PassengerID: "", Price: 200, Source: "CityF", Destination: "CityG", TransportType: "Train"},
-		{TID: 13, ServiceID: "S013", SeatNo: 1, ServiceName: "QuickFly", ServiceProviderID: "P007", Status: "Available", PassengerID: "", Price: 600, Source: "CityG", Destination: "CityH", TransportType: "Flight"},
-		{TID: 14, ServiceID: "S014", SeatNo: 2, ServiceName: "QuickFly", ServiceProviderID: "P007", Status: "Available", PassengerID: "", Price: 600, Source: "CityG", Destination: "CityH", TransportType: "Flight"},
-		{TID: 15, ServiceID: "S015", SeatNo: 1, ServiceName: "MegaBus", ServiceProviderID: "P008", Status: "Available", PassengerID: "", Price: 120, Source: "CityH", Destination: "CityA", TransportType: "Bus"},
-	})
+	result, err := queryChaincode("getAllTickets", []string{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get tickets", "details": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 // CreateTickets creates tickets
@@ -49,11 +94,30 @@ func CreateTickets(c *gin.Context) {
 	var tickets []models.Ticket
 	if err := c.ShouldBindJSON(&tickets); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ticket list"})
-		c.Error(err) // Print debug message to show the error in binding
 		return
 	}
 
-	// Just return success
+	for _, ticket := range tickets {
+		args := []string{
+			fmt.Sprint(ticket.TID),
+			ticket.ServiceID,
+			fmt.Sprint(ticket.SeatNo),
+			ticket.ServiceName,
+			ticket.ServiceProviderID,
+			fmt.Sprintf("%.2f", ticket.Price),
+			ticket.StartTime.Format(time.RFC3339),
+			ticket.Duration.String(),
+			ticket.Source,
+			ticket.Destination,
+			ticket.TransportType,
+		}
+		_, err := invokeChaincode("createTicket", args)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create ticket", "details": err.Error()})
+			return
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Tickets created successfully"})
 }
 
@@ -65,6 +129,15 @@ func DeleteTickets(c *gin.Context) {
 	if err := c.ShouldBindJSON(&request); err != nil || len(request.TIDs) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "TIDs are required"})
 		return
+	}
+
+	for _, tid := range request.TIDs {
+		args := []string{fmt.Sprint(tid), "provider1@example.com"} // Replace with actual provider ID
+		_, err := invokeChaincode("deleteTicket", args)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete ticket", "details": err.Error()})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Tickets deleted successfully"})
@@ -80,6 +153,15 @@ func CancelTickets(c *gin.Context) {
 		return
 	}
 
+	for _, tid := range request.TIDs {
+		args := []string{"user1@example.com", fmt.Sprint(tid)} // Replace with actual user ID
+		_, err := invokeChaincode("cancelTicket", args)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cancel ticket", "details": err.Error()})
+			return
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Tickets cancelled successfully"})
 }
 
@@ -91,6 +173,15 @@ func BookTickets(c *gin.Context) {
 	if err := c.ShouldBindJSON(&request); err != nil || len(request.TIDs) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "TIDs are required"})
 		return
+	}
+
+	for _, tid := range request.TIDs {
+		args := []string{"user1@example.com", fmt.Sprint(tid)} // Replace with actual user ID
+		_, err := invokeChaincode("bookTicket", args)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to book ticket", "details": err.Error()})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Tickets booked successfully"})
@@ -106,10 +197,14 @@ func GetTicketStatus(c *gin.Context) {
 		return
 	}
 
-	// Dummy status mapping
 	statusMap := make(map[uint32]string)
 	for _, tid := range request.TIDs {
-		statusMap[tid] = "Available"
+		result, err := queryChaincode("getStatus", []string{fmt.Sprint(tid)})
+		if err != nil {
+			statusMap[tid] = "Error"
+		} else {
+			statusMap[tid] = result
+		}
 	}
 
 	c.JSON(http.StatusOK, statusMap)

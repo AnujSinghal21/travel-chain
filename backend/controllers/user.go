@@ -1,20 +1,70 @@
 package controllers
 
 import (
+	"backend/models"
 	"net/http"
 
-	"backend/models"
-
 	"github.com/gin-gonic/gin"
+	"github.com/hyperledger/fabric-sdk-go/pkg/client/channel"
+	"github.com/hyperledger/fabric-sdk-go/pkg/core/config"
+	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
 )
+
+func invokeChaincode(function string, args []string) (string, error) {
+	sdk, err := fabsdk.New(config.FromFile("connection-org1.yaml"))
+	if err != nil {
+		return "", err
+	}
+	defer sdk.Close()
+
+	clientContext := sdk.ChannelContext("mychannel", fabsdk.WithUser("Admin"), fabsdk.WithOrg("Org1"))
+	client, err := channel.New(clientContext)
+	if err != nil {
+		return "", err
+	}
+
+	request := channel.Request{
+		ChaincodeID: "mycc",
+		Fcn:         function,
+		Args:        args,
+	}
+	response, err := client.Execute(request)
+	if err != nil {
+		return "", err
+	}
+	return string(response.Payload), nil
+}
+
+func queryChaincode(function string, args []string) (string, error) {
+	sdk, err := fabsdk.New(config.FromFile("connection-org1.yaml"))
+	if err != nil {
+		return "", err
+	}
+	defer sdk.Close()
+
+	clientContext := sdk.ChannelContext("mychannel", fabsdk.WithUser("Admin"), fabsdk.WithOrg("Org1"))
+	client, err := channel.New(clientContext)
+	if err != nil {
+		return "", err
+	}
+
+	request := channel.Request{
+		ChaincodeID: "mycc",
+		Fcn:         function,
+		Args:        args,
+	}
+	response, err := client.Query(request)
+	if err != nil {
+		return "", err
+	}
+	return string(response.Payload), nil
+}
 
 // RegisterHandler handles user registration
 func RegisterHandler(c *gin.Context) {
 	var user models.User
-
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
-		c.Error(err) // Print debug message to show the error in binding
 		return
 	}
 
@@ -23,9 +73,21 @@ func RegisterHandler(c *gin.Context) {
 		return
 	}
 
-	// Save user to DB
+	// Hash password and store in local DB (assuming a hashing function exists)
+	hashedPassword := user.Password // Replace with actual hashing logic
+
+	// Call chaincode to create user
+	args := []string{user.Email, user.Name, user.Role, hashedPassword, "1000.00"} // Initial balance
+	_, err := invokeChaincode("createUser", args)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user on blockchain", "details": err.Error()})
+		return
+	}
+
+	// Optionally save to local DB for authentication
+	user.Password = hashedPassword
 	if err := models.DB.Create(&user).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User already exists or database error"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Database error"})
 		return
 	}
 
@@ -39,17 +101,16 @@ func LoginHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&loginReq); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input", "details": err.Error()})
-		c.Error(err) // Print debug message to show the error in binding
 		return
 	}
 
-	// Find user by email
+	// Find user by email in local DB
 	if err := models.DB.Where("email = ?", loginReq.Email).First(&user).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 		return
 	}
 
-	if user.Password != loginReq.Password {
+	if user.Password != loginReq.Password { // Replace with proper password check
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 		return
 	}
@@ -83,6 +144,14 @@ func GetUserDetailsHandler(c *gin.Context) {
 		return
 	}
 
+	// Query balance from chaincode
+	balance, err := queryChaincode("queryBalance", []string{email})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query balance", "details": err.Error()})
+		return
+	}
+
+	// Fetch user details from local DB
 	var user models.User
 	if err := models.DB.Where("email = ?", email).First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
@@ -90,10 +159,11 @@ func GetUserDetailsHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"name":  user.Name,
-		"email": user.Email,
-		"phone": user.Phone,
-		"role":  user.Role,
-		"age":   user.Age,
+		"name":    user.Name,
+		"email":   user.Email,
+		"phone":   user.Phone,
+		"role":    user.Role,
+		"age":     user.Age,
+		"balance": balance,
 	})
 }
