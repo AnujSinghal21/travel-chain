@@ -1,13 +1,19 @@
 package main
+
 import (
-    "github.com/gin-gonic/gin"
-    "github.com/gin-contrib/cors"
-	"github.com/anujSinghal21/travel-chain/api-interface/routes"
+	"github.com/gin-gonic/gin"
+	"backend/models"
+	"backend/routes"
 )
 
-func main(){
-	router := gin.Default()
-	router.Use(cors.Default())
-	routes.SetupRoutes(router)
-	router.Run(":8080")	
+func main() {
+	r := gin.Default()
+
+	// Initialize database
+	models.InitDB()
+
+	// Register routes
+	routes.RegisterRoutes(r)
+
+	r.Run(":8080")
 }

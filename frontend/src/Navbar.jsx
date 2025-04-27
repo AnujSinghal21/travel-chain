@@ -1,35 +1,50 @@
 // components/Navbar.jsx
 import { Link, useLocation } from "react-router-dom";
 
-function Navbar() {
+function Navbar({user}) {
   const { pathname } = useLocation();
 
-  const commonLinks = (
-    <>
-      <Link className="nav-link text-white" to="/">Home</Link>
-      <Link className="nav-link text-white" to="/about">About</Link>
-      <Link className="nav-link text-white" to="/services">Services</Link>
-      <Link className="nav-link text-white" to="/contact">Contact</Link>
-    </>
-  );
-
-  const authLinks = (
-    <>
-      <Link className="nav-link text-white" to="/dashboard">Dashboard</Link>
-      <Link className="nav-link text-white" to="/profile">Profile</Link>
-    </>
-  );
-
   const getLinks = () => {
-    if (pathname.startsWith("/dashboard") || pathname.startsWith("/profile")) {
-      return authLinks;
+    if (user){
+        return (
+            <>
+          <Link className="nav-link text-white mx-2" to="/browse">
+              <i className="bi bi-search"></i> Browse
+          </Link>
+          <Link className="nav-link text-white mx-2" to="/mybookings">
+              <i className="bi bi-calendar-check"></i> My {user.role == "Customer" ? " bookings": " services"}
+          </Link>
+          
+          <Link className="nav-link text-white mx-2" to="/profile">
+              <i className="bi bi-person"></i> Profile
+          </Link>
+          <Link
+            className="nav-link text-white mx-2"
+            to="/"
+            onClick={() => {
+              localStorage.removeItem("token");
+              localStorage.removeItem("user");
+              window.location.reload();
+            }}
+          >
+              <i className="bi bi-box-arrow-right"></i> Logout
+          </Link>
+            </>
+        )
+    }else{
+        return (
+            <>
+                <Link className="nav-link text-white" to="/login">Login</Link>
+                <Link className="nav-link text-white" to="/register">Register</Link>
+            </>
+        )
+        
     }
-    return commonLinks;
   };
 
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-success px-3">
-      <Link className="navbar-brand text-white" to="/">GreenSite</Link>
+      <Link className="navbar-brand text-white" to="/">Travel-Chain</Link>
       <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
         <span className="navbar-toggler-icon" />
       </button>
