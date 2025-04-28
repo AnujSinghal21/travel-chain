@@ -1,26 +1,53 @@
 name: "Ticket Network"
 version: "1.0"
-
 channels:
   mychannel:
     orderers:
       - orderer.example.com
 
+client:
+  organization: org1
+  logging:
+    level: info
+  cryptoConfig:
+    path: /home/goutam/TicketBookingSystem/hyperledger/fabric-samples/test-network/crypto-config
+# organizations:
+#   Org1:
+#     mspid: Org1MSP
+#     peers:
+#       - peer0.org1.example.com
+#     certificateAuthorities:
+#       - ca.org1.example.com
+#     adminPrivateKey:
+#       path: /home/goutam/TicketBookingSystem/hyperledger/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore/10ef10014e1d1b3f4ae9186290468eb1a10f7c7ec260d5369681ef81e68bc4df_sk
+#     signedCert:
+#       path: /home/goutam/TicketBookingSystem/hyperledger/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/signcerts/cert.pem
+
 organizations:
-  Org1:
+  org1:
     mspid: Org1MSP
-    cryptoPath: ../../Hyperledger/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+    # cryptoPath: /home/goutam/TicketBookingSystem/hyperledger/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     peers:
       - peer0.org1.example.com
+    certificateAuthorities:
+      - ca.org1.example.com
+    cryptoPath: /home/goutam/TicketBookingSystem/hyperledger/fabric-samples/test-network/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
 
 orderers:
   orderer.example.com:
     url: localhost:7050
     tlsCACerts:
-      path: ../../Hyperledger/fabric-samples/test-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+      path: /home/goutam/TicketBookingSystem/hyperledger/fabric-samples/test-network/crypto-config/ordererOrganizations/example.com/tlsca
 
 peers:
   peer0.org1.example.com:
     url: localhost:7051
     tlsCACerts:
-      path: ../../Hyperledger/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+      path: /home/goutam/TicketBookingSystem/hyperledger/fabric-samples/test-network/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls
+
+certificateAuthorities:
+  ca.org1.example.com:
+    url: https://localhost:7054
+    caName: ca-org1
+    tlsCACerts:
+      path: /home/goutam/TicketBookingSystem/hyperledger/fabric-samples/test-network/crypto-config/peerOrganizations/org1.example.com/ca

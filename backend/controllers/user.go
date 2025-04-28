@@ -3,6 +3,7 @@ package controllers
 import (
 	"backend/models"
 	"net/http"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hyperledger/fabric-sdk-go/pkg/client/channel"
@@ -10,57 +11,81 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
 )
 
+const (
+	chaincodeID = "mycc" 
+	channelID   = "mychannel"
+)
+
+var (
+	sdk *fabsdk.FabricSDK
+)
+
+func initFabric() error {
+	if sdk == nil {
+		configPath := "../hyperledger/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/connection-org1.yaml"
+		var err error
+		sdk, err = fabsdk.New(config.FromFile(configPath))
+		if err != nil {
+			return fmt.Errorf("failed to create Fabric SDK: %v", err)
+		}
+	}
+	return nil
+}
+
 func invokeChaincode(function string, args []string) (string, error) {
-	sdk, err := fabsdk.New(config.FromFile("connection-org1.yaml"))
-	if err != nil {
-		return "", err
-	}
-	defer sdk.Close()
-
-	clientContext := sdk.ChannelContext("mychannel", fabsdk.WithUser("Admin"), fabsdk.WithOrg("Org1"))
-	client, err := channel.New(clientContext)
-	if err != nil {
+	if err := initFabric(); err != nil {
 		return "", err
 	}
 
-	request := channel.Request{
-		ChaincodeID: "mycc",
+	clientChannelContext := sdk.ChannelContext(channelID, fabsdk.WithUser("Admin"), fabsdk.WithOrg("Org1"))
+	client, err := channel.New(clientChannelContext)
+	if err != nil {
+		return "", fmt.Errorf("failed to create channel client: %v", err)
+	}
+
+	response, err := client.Execute(channel.Request{
+		ChaincodeID: chaincodeID,
 		Fcn:         function,
-		Args:        args,
-	}
-	response, err := client.Execute(request)
+		Args:        convertArgs(args),
+	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("chaincode invocation failed: %v", err)
 	}
+
 	return string(response.Payload), nil
 }
 
 func queryChaincode(function string, args []string) (string, error) {
-	sdk, err := fabsdk.New(config.FromFile("connection-org1.yaml"))
-	if err != nil {
-		return "", err
-	}
-	defer sdk.Close()
-
-	clientContext := sdk.ChannelContext("mychannel", fabsdk.WithUser("Admin"), fabsdk.WithOrg("Org1"))
-	client, err := channel.New(clientContext)
-	if err != nil {
+	if err := initFabric(); err != nil {
 		return "", err
 	}
 
-	request := channel.Request{
-		ChaincodeID: "mycc",
+	clientChannelContext := sdk.ChannelContext(channelID, fabsdk.WithUser("Admin"), fabsdk.WithOrg("Org1"))
+	client, err := channel.New(clientChannelContext)
+	if err != nil {
+		return "", fmt.Errorf("failed to create channel client: %v", err)
+	}
+
+	response, err := client.Query(channel.Request{
+		ChaincodeID: chaincodeID,
 		Fcn:         function,
-		Args:        args,
-	}
-	response, err := client.Query(request)
+		Args:        convertArgs(args),
+	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("chaincode query failed: %v", err)
 	}
+
 	return string(response.Payload), nil
 }
 
-// RegisterHandler handles user registration
+func convertArgs(args []string) [][]byte {
+	byteArgs := make([][]byte, len(args))
+	for i, arg := range args {
+		byteArgs[i] = []byte(arg)
+	}
+	return byteArgs
+}
+
 func RegisterHandler(c *gin.Context) {
 	var user models.User
 	if err := c.ShouldBindJSON(&user); err != nil {
@@ -68,90 +93,94 @@ func RegisterHandler(c *gin.Context) {
 		return
 	}
 
-	if user.Email == "" || user.Password == "" || user.Name == "" || user.Phone == "" || user.Role == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required fields"})
+	requiredFields := []string{user.Email, user.Password, user.Name, user.Phone, user.Role}
+	for _, field := range requiredFields {
+		if field == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "All fields are required"})
+			return
+		}
+	}
+
+
+	hashedPassword := user.Password 
+
+	args := []string{
+		user.Email,
+		user.Name,
+		user.Role,
+		hashedPassword,
+		"1000.00", // balance
+	}
+
+	if _, err := invokeChaincode("createUser", args); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Blockchain registration failed",
+			"details": err.Error(),
+		})
+		c.Error(err)
 		return
 	}
 
-	// Hash password and store in local DB (assuming a hashing function exists)
-	hashedPassword := user.Password // Replace with actual hashing logic
-
-	// Call chaincode to create user
-	args := []string{user.Email, user.Name, user.Role, hashedPassword, "1000.00"} // Initial balance
-	_, err := invokeChaincode("createUser", args)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user on blockchain", "details": err.Error()})
-		return
-	}
-
-	// Optionally save to local DB for authentication
 	user.Password = hashedPassword
 	if err := models.DB.Create(&user).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Database error"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database operation failed"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Registration successful"})
+	c.JSON(http.StatusOK, gin.H{"message": "User registered successfully"})
 }
 
-// LoginHandler handles user login
+
 func LoginHandler(c *gin.Context) {
 	var loginReq models.LoginRequest
-	var user models.User
-
 	if err := c.ShouldBindJSON(&loginReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input", "details": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
 		return
 	}
 
-	// Find user by email in local DB
+	var user models.User
 	if err := models.DB.Where("email = ?", loginReq.Email).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
-	if user.Password != loginReq.Password { // Replace with proper password check
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+	if user.Password != loginReq.Password { // Use bcrypt compare in production
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
-	// Generate JWT token
 	token, err := models.GenerateToken(user.Email, user.Role)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Login successful", "token": token, "user": user})
+	c.JSON(http.StatusOK, gin.H{
+		"token": token,
+		"user": gin.H{
+			"email": user.Email,
+			"name":  user.Name,
+			"role":  user.Role,
+		},
+	})
 }
-
-// LogoutHandler handles user logout
-func LogoutHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"message": "Logout successful"})
-}
-
-// GetUserDetailsHandler returns user profile from token
+n
 func GetUserDetailsHandler(c *gin.Context) {
-	emailValue, exists := c.Get("email")
-	if !exists {
+	email, exists := c.Get("email")
+	if !exists || email == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
-	email, ok := emailValue.(string)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid token data"})
-		return
-	}
-
-	// Query balance from chaincode
-	balance, err := queryChaincode("queryBalance", []string{email})
+	balance, err := queryChaincode("queryBalance", []string{email.(string)})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query balance", "details": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to retrieve balance",
+			"details": err.Error(),
+		})
 		return
 	}
 
-	// Fetch user details from local DB
 	var user models.User
 	if err := models.DB.Where("email = ?", email).First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
@@ -163,7 +192,10 @@ func GetUserDetailsHandler(c *gin.Context) {
 		"email":   user.Email,
 		"phone":   user.Phone,
 		"role":    user.Role,
-		"age":     user.Age,
 		"balance": balance,
 	})
+}
+
+func LogoutHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out"})
 }

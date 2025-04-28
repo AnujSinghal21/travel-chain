@@ -20,7 +20,7 @@ func RegisterRoutes(r *gin.Engine) {
 			protected.GET("/ticket", controllers.GetTicketByTID)
 			protected.GET("/tickets", controllers.GetAllTickets)
 			protected.POST("/ticket/create", controllers.CreateTickets)
-			protected.POST("/ticket/delete", controllers.DeleteTickets)
+			// protected.POST("/ticket/delete", controllers.DeleteTickets)
 			protected.POST("/ticket/cancel", controllers.CancelTickets)
 			protected.POST("/ticket/book", controllers.BookTickets)
 			protected.POST("/ticket/status", controllers.GetTicketStatus)

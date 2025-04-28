@@ -1,6 +1,5 @@
 package main
 
-   import "time"
 
    type User struct {
        DocType string  `json:"docType"`
@@ -20,8 +19,8 @@ package main
        Status            string        `json:"status"`
        PassengerID       string        `json:"passenger"`
        Price             float64       `json:"price"`
-       StartTime         time.Time     `json:"start_time"`
-       Duration          time.Duration `json:"duration"`
+       StartTime         string     `json:"start_time"`
+       Duration          uint32 `json:"duration"`
        Source            string        `json:"source"`
        Destination       string        `json:"destination"`
        TransportType     string        `json:"transport_type"`
