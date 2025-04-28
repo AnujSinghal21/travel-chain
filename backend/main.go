@@ -13,7 +13,6 @@ func main() {
 	}
 	r := gin.Default()
 
-	// Initialize database
 	models.InitDB()
 
 	// Register routes

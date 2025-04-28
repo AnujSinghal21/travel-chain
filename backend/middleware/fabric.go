@@ -87,7 +87,6 @@ func InitializeFabric() error {
 	return nil
 }
 
-// InvokeChaincode submits a transaction to the ledger
 func InvokeChaincode(fn string, args []string) (string, error) {
 	request := channel.Request{
 		ChaincodeID: chaincodeID,
@@ -103,7 +102,6 @@ func InvokeChaincode(fn string, args []string) (string, error) {
 	return string(response.Payload), nil
 }
 
-// QueryChaincode queries the ledger state
 func QueryChaincode(fn string, args []string) (string, error) {
 	request := channel.Request{
 		ChaincodeID: chaincodeID,
@@ -155,7 +153,7 @@ func getOrgPath() string {
 		"peerOrganizations",
 		"org1.example.com",
 	)
-}
+} // bekar
 
 func getProjectRoot() string {
 	gopath := os.Getenv("GOPATH")
@@ -165,7 +163,6 @@ func getProjectRoot() string {
 	return filepath.Join(gopath, "src", "TicketBookingSystem")
 }
 
-// GetChannelContext returns the fabric channel context
 func GetChannelContext() (context.ChannelProvider, error) {
 	if sdk == nil {
 		return nil, fmt.Errorf("SDK not initialized")

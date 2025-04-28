@@ -164,7 +164,7 @@ func LoginHandler(c *gin.Context) {
 		},
 	})
 }
-n
+
 func GetUserDetailsHandler(c *gin.Context) {
 	email, exists := c.Get("email")
 	if !exists || email == "" {
